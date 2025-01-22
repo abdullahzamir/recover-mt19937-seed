@@ -180,7 +180,7 @@ class MT19937_64:
         for _ in range(self.n):
             self._twist_one()
 
-    def try_recover_seed(self) -> Optional[int]:
+    def try_recover_seed(self,outputs) -> Optional[int]:
         """Recover the seed from a freshly-seeded state.
 
         If the PRNG has just been seeded, or its internal state is consistent
@@ -189,6 +189,7 @@ class MT19937_64:
         Reference: https://www.ambionics.io/blog/php-mt-rand-prediction
         """
         current_state = self.dump_state()
+        
         try:
             self.rewind(self.n)
             """Even though all states are twisted once during seeding, simply
@@ -233,6 +234,7 @@ class MT19937_64:
         """Rewind the internal state for *rounds* iterations."""
         for _ in range(rounds):
             self._untwist_one()
+        print(self._state)
 
     def clone_state_from_output_and_rewind(self, output: List[int]) -> None:
         """Clone internal states from a list of raw PRNG output.
@@ -276,16 +278,19 @@ class MT19937(MT19937_64):
     f = 1812433253
 
 
-def test_with_stdlib_random():
-    import random
-    stdlib_random = random.Random()
+def recover_state_and_seed():
     mt = MT19937()
-    output_for_cloning = [stdlib_random.getrandbits(mt.w) for _ in range(mt.n)]
-    mt.clone_state_from_output(output_for_cloning)
-    for _ in range(10000):
-        assert stdlib_random.getrandbits(mt.w) == mt.get_next_random()
-    print('Test successful')
+    outputs = []   
 
+    try: 
+        with open('outputs.txt', 'r') as f:
+            for line in f:
+                outputs.append(int(line.strip()))
+    except FileNotFoundError:
+        print("File not found")
+        return
+    mt.clone_state_from_output_and_rewind(outputs)
+    print("seed:", mt.try_recover_seed())
 
 if __name__ == '__main__':
-    test_with_stdlib_random()
+    recover_state_and_seed()
